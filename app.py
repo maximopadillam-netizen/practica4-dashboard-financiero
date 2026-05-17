@@ -5,7 +5,8 @@ import yfinance as yf
 import plotly.express as px
 import requests
 from datetime import date
-
+import plotly.express as px
+import plotly.graph_objects as go
 
 # -----------------------------
 # CONFIGURACIÓN GENERAL
@@ -372,6 +373,11 @@ with tab2:
         title="Evolución de precios normalizados base 100"
     )
 
+    fig_normalized.update_layout(
+        legend_title_text="Empresa",
+        hovermode="x unified"
+    )
+
     st.plotly_chart(fig_normalized, use_container_width=True)
 
     st.info(
@@ -379,42 +385,140 @@ with tab2:
         "aunque sus precios originales sean diferentes."
     )
 
-    st.subheader("3. Rendimiento acumulado por empresa")
+    # -----------------------------
+    # RANKING + SCATTER
+    # -----------------------------
 
-    metrics_sorted = metrics.sort_values("Rendimiento acumulado (%)", ascending=False)
+    st.subheader("3. Rendimiento y riesgo de las empresas")
 
-    fig_returns = px.bar(
-        metrics_sorted,
-        x=metrics_sorted.index,
-        y="Rendimiento acumulado (%)",
-        title="Rendimiento acumulado del periodo"
+    metrics_plot = metrics.copy()
+    metrics_plot["Ticker"] = metrics_plot.index
+    metrics_plot["Riesgo por drawdown"] = metrics_plot["Máximo drawdown (%)"].abs()
+
+    col_a, col_b = st.columns([1, 1])
+
+    with col_a:
+        ranking = metrics_plot.sort_values("Rendimiento acumulado (%)", ascending=True)
+
+        fig_ranking = px.bar(
+            ranking,
+            x="Rendimiento acumulado (%)",
+            y="Ticker",
+            orientation="h",
+            title="Ranking de rendimiento acumulado",
+            text="Rendimiento acumulado (%)"
+        )
+
+        fig_ranking.update_traces(
+            texttemplate="%{text:.1f}%",
+            textposition="outside"
+        )
+
+        fig_ranking.update_layout(
+            xaxis_title="Rendimiento acumulado (%)",
+            yaxis_title="Empresa",
+            showlegend=False
+        )
+
+        st.plotly_chart(fig_ranking, use_container_width=True)
+
+    with col_b:
+        fig_risk_return = px.scatter(
+            metrics_plot,
+            x="Volatilidad anualizada (%)",
+            y="Rendimiento acumulado (%)",
+            size="Riesgo por drawdown",
+            color="Ticker",
+            hover_name="Ticker",
+            title="Riesgo vs rendimiento",
+            hover_data={
+                "Volatilidad anualizada (%)": ":.2f",
+                "Rendimiento acumulado (%)": ":.2f",
+                "Máximo drawdown (%)": ":.2f",
+                "Riesgo por drawdown": False
+            }
+        )
+
+        fig_risk_return.update_layout(
+            xaxis_title="Volatilidad anualizada (%)",
+            yaxis_title="Rendimiento acumulado (%)",
+            legend_title_text="Empresa"
+        )
+
+        st.plotly_chart(fig_risk_return, use_container_width=True)
+
+    st.caption(
+        "El gráfico de riesgo vs rendimiento permite observar si las empresas con mayor rendimiento "
+        "también asumieron mayor volatilidad o mayores caídas desde máximos."
     )
 
-    st.plotly_chart(fig_returns, use_container_width=True)
+    # -----------------------------
+    # CORRELACIÓN
+    # -----------------------------
 
-    st.subheader("4. Riesgo medido por volatilidad")
+    st.subheader("4. Mapa de correlación entre acciones")
 
-    fig_volatility = px.bar(
-        metrics.sort_values("Volatilidad anualizada (%)", ascending=False),
-        x=metrics.sort_values("Volatilidad anualizada (%)", ascending=False).index,
-        y="Volatilidad anualizada (%)",
-        title="Volatilidad anualizada por empresa"
+    corr_matrix = returns.corr().round(2)
+
+    fig_corr = px.imshow(
+        corr_matrix,
+        text_auto=True,
+        aspect="auto",
+        title="Correlación de rendimientos diarios"
     )
 
-    st.plotly_chart(fig_volatility, use_container_width=True)
+    fig_corr.update_layout(
+        xaxis_title="Empresa",
+        yaxis_title="Empresa"
+    )
 
-    st.subheader("5. Máximo drawdown")
+    st.plotly_chart(fig_corr, use_container_width=True)
+
+    st.info(
+        "La correlación muestra qué tan parecido se mueven las acciones entre sí. "
+        "Valores cercanos a 1 indican que dos acciones tienden a moverse en la misma dirección."
+    )
+
+    # -----------------------------
+    # DRAWDOWN
+    # -----------------------------
+
+    st.subheader("5. Caídas máximas desde máximos históricos")
+
+    drawdown_plot = metrics_plot.sort_values("Máximo drawdown (%)", ascending=True)
 
     fig_drawdown = px.bar(
-        metrics.sort_values("Máximo drawdown (%)"),
-        x=metrics.sort_values("Máximo drawdown (%)").index,
-        y="Máximo drawdown (%)",
-        title="Mayor caída desde máximo histórico"
+        drawdown_plot,
+        x="Máximo drawdown (%)",
+        y="Ticker",
+        orientation="h",
+        title="Máximo drawdown por empresa",
+        text="Máximo drawdown (%)"
+    )
+
+    fig_drawdown.update_traces(
+        texttemplate="%{text:.1f}%",
+        textposition="outside"
+    )
+
+    fig_drawdown.update_layout(
+        xaxis_title="Máximo drawdown (%)",
+        yaxis_title="Empresa",
+        showlegend=False
     )
 
     st.plotly_chart(fig_drawdown, use_container_width=True)
 
-    st.subheader("Tabla de métricas financieras")
+    st.caption(
+        "El drawdown ayuda a medir qué tanto llegó a caer cada acción desde su punto máximo dentro del periodo analizado."
+    )
+
+    # -----------------------------
+    # TABLA
+    # -----------------------------
+
+    st.subheader("6. Tabla de métricas financieras")
+
     st.dataframe(metrics, use_container_width=True)
 
 
