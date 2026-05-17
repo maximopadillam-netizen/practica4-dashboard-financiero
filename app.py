@@ -20,8 +20,10 @@ st.set_page_config(
 
 st.title("📊 Dashboard Financiero Automatizado")
 st.caption("Práctica 4 - Laboratorio de Visualización de Datos Financieros")
-st.caption(f"Última actualización automática: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
+st.caption(
+    f"Última actualización automática (hora Guadalajara): "
+    f"{pd.Timestamp.now(tz='America/Mexico_City').strftime('%Y-%m-%d %H:%M:%S')}"
+)
 # -----------------------------
 # TOKEN BANXICO
 # -----------------------------
@@ -48,7 +50,9 @@ selected_tickers = st.sidebar.multiselect(
 )
 
 start_date = st.sidebar.date_input("Fecha inicial", pd.to_datetime("2023-01-01"))
-end_date = st.sidebar.date_input("Fecha final", pd.to_datetime("today"))
+today_gdl = pd.Timestamp.now(tz="America/Mexico_City").date()
+
+end_date = st.sidebar.date_input("Fecha final", today_gdl)
 
 START = pd.to_datetime(start_date).strftime("%Y-%m-%d")
 END = pd.to_datetime(end_date).strftime("%Y-%m-%d")
