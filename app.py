@@ -19,7 +19,7 @@ st.set_page_config(
 
 st.title("📊 Dashboard Financiero Automatizado")
 st.caption("Práctica 4 - Laboratorio de Visualización de Datos Financieros")
-
+st.caption(f"Última actualización automática: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # -----------------------------
 # TOKEN BANXICO
